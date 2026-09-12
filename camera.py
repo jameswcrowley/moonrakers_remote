@@ -29,15 +29,20 @@ def transform_frame(frame, pts_src, pts_dst, sizex=None, sizey=None):
     return cv.warpPerspective(frame, homography, (sizex, sizey))
 
 
-def edge_detection(frame, blur_ksize=(17, 17), canny_threshold1=75, canny_threshold2=200):
+def edge_detection_canny(frame, blur_ksize=(17, 17), canny_threshold1=75, canny_threshold2=200):
     """Blur a frame and return its Canny edge map."""
     blurred = cv.GaussianBlur(frame, blur_ksize, 0)
     return cv.Canny(blurred, canny_threshold1, canny_threshold2, apertureSize=5, L2gradient=True)
 
+def edge_detection_thresholding(frame, blur_ksize=(17, 17), threshold1=100, threshold2=200):
+    """Blur a frame and return its binary thresholded edge map."""
+    blurred = cv.GaussianBlur(frame, blur_ksize, 0)
+    return cv.threshold(blurred, threshold1, threshold2, cv.THRESH_BINARY)[1]
+
 
 def find_contours(canny):
     """Find external contours, ordered from largest to smallest."""
-    contours, _ = cv.findContours(canny, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv.findContours(canny, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE) # changed from RETR_EXTERNAL to RETR_LIST
     return sorted(contours, key=cv.contourArea, reverse=True)
 
 
@@ -50,7 +55,17 @@ def approximate_contours(contours, max_contours=1, min_area=MIN_CONTOUR_AREA):
 
         epsilon = 0.02 * cv.arcLength(contour, True)
         approx = cv.approxPolyDP(contour, epsilon, True)
-        if len(approx) == 4:
+        area = cv.contourArea(approx)
+        rect = cv.minAreaRect(approx)
+
+        (_, _), (w, h), angle = rect
+
+        rectangularity = area / (w * h) if w * h != 0 else 0
+        aspect_ratio = w / h if h != 0 else 0
+
+        conditions = (rectangularity > 0.5 and aspect_ratio > 0.3 and aspect_ratio < 2 and cv.isContourConvex(approx) and len(approx) == 4)
+
+        if conditions:
             approximated.append(approx)
         if max_contours and len(approximated) >= max_contours:
             break
@@ -90,7 +105,7 @@ def add_contour_info(frame, contours):
 def process_frame(frame, capture, max_contours, stabilizer = None):
     """Detect, draw, and rectify contours for one camera frame."""
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    canny = edge_detection(gray)
+    canny = edge_detection_canny(gray)
     contours = approximate_contours(find_contours(canny), max_contours)
 
     if stabilizer is not None:
@@ -120,10 +135,47 @@ def process_frame(frame, capture, max_contours, stabilizer = None):
         primary_contour = np.int32(screen_contour).reshape(1, 4, 2)
         cv.drawContours(frame, primary_contour, -1, (0, 150, 0), 5)
     add_contour_info(frame, contours)
-    add_frame_info(frame, capture)
+    if capture is not None:
+        add_frame_info(frame, capture)
 
     return frame, canny, transformed
 
+def extract_stable_quads(frame, max_contours, stabilizer = None, method = 'canny'):
+    """Detect and draw all stable quadrilaterals for one camera frame.
+    Args:
+        frame (np.ndarray): The input camera frame.
+        max_contours (int): Maximum number of contours to consider.
+        stabilizer (ContourStabilizer, optional): Stabilizer for tracking stable quads.
+        method (str): Edge detection method, either 'canny' or 'threshold'.
+    
+    Returns:
+        stable (list): List of stable quadrilateral contours.
+        frame (np.ndarray): The frame with drawn contours.
+    """
+
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    if method == 'canny':
+        edges = edge_detection_canny(gray)
+    elif method == 'threshold':
+        _, edges = cv.threshold(gray, 128, 255, cv.THRESH_BINARY)
+    else:
+        raise ValueError(f"Unsupported edge detection method: {method}")
+    
+    contours = approximate_contours(find_contours(edges), max_contours)
+
+    if stabilizer is not None:
+        confirmed = stabilizer.update(contours)
+    else:
+        confirmed = []
+
+    is_stable = [stabilizer is not None and stabilizer.matches_any(c, confirmed) for c in contours]
+    stable = [c for c, s in zip(contours, is_stable) if s]
+    candidates = [c for c, s in zip(contours, is_stable) if not s]
+    cv.drawContours(frame, candidates, -1, (100, 255, 255), 5)
+    cv.drawContours(frame, stable, -1, (50, 255, 100), 5)
+    add_contour_info(frame, contours)
+
+    return stable, frame
 
 
 class ContourTrack:
@@ -236,11 +288,12 @@ def main():
                 print("Can't receive frame (stream end?). Exiting ...")
                 break
 
-            frame, canny, transformed = process_frame(frame, capture, args.display_contours, stabilizer=stabilizer)
-            cv.imshow("frame", frame)
-            cv.imshow("canny", canny)
-            if transformed is not None:
-                cv.imshow("transformed", transformed)
+            #frame, canny, transformed = process_frame(frame, capture, args.display_contours, stabilizer=stabilizer)
+            stable, frame = extract_stable_quads(frame, args.display_contours, stabilizer=stabilizer, method='threshold')
+            cv.imshow("frame", frame[:, ::-1])
+            # cv.imshow("canny", canny)
+            # if transformed is not None:
+            #     cv.imshow("transformed", transformed)
 
             if cv.waitKey(1) & 0xFF == ord("q"):
                 break
