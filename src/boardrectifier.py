@@ -137,6 +137,13 @@ def rectify_board(frame, aruco_corners, aruco_ids, board_config: BoardConfig):
         [0, h - 1],
     ], dtype=np.float32)
 
+    # TODO: check this on the real board 
+    # display the BoardConfig zones on the rectified board for debugging:
+    for zone in board_config.zones:
+        x, y, w, h = zone.roi
+        cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv.putText(frame, zone.name, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
     matrix = cv.getPerspectiveTransform(src_points, dst_points)
     return cv.warpPerspective(frame, matrix, (w, h))
 

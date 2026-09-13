@@ -8,3 +8,6 @@ Users: 6,358 total // 205 current.
 READY TO PLAY.  
 AWAITING INPUT...   
 ... 
+
+
+Credit to Carla-Codes for the star twinkling images and design.

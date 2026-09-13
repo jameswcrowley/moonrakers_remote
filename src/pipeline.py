@@ -16,7 +16,7 @@ except ImportError:  # running as a script, or with src/ on sys.path directly
     import recognition
     import state
 
-# TODO: point these at the real image directories for each card type.
+
 LIBRARY_DIRECTORIES = {
     "contracts": "data/saved_images/contracts",
     "crew": "data/saved_images/crew",
@@ -47,9 +47,11 @@ def process_boards(frame, libraries, matcher, board_state: state.BoardState):
     Returns:
         bool: True if any zone's recorded card changed this frame.
     """
+
+    # TODO: check wheter this can process multiple cards or if it'll stop after the first one in each zone. Can't remember if identify_card_subarea handles multiple cards.
     aruco_corners, aruco_ids = boardrectifier.detect_aruco_markers(frame)
 
-    dirty = False
+    dirty = False # flag for whether any zone's recorded card changed this frame
     for board_config in boardrectifier.BOARD_CONFIGS.values():
         rectified = boardrectifier.rectify_board(frame, aruco_corners, aruco_ids, board_config)
         if rectified is None:

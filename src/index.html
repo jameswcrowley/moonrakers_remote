@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moonrakers Status</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            min-height: 100dvh;
+            background: #000;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+
+        :root {
+            --page-padding: clamp(8px, 2vw, 40px);
+            --gap: clamp(4px, 1vw, 10px);
+            --portrait-card-width: min(
+        150px,
+        calc((100dvw - (2 * var(--page-padding)) - (6 * var(--gap))) / 7)
+    );
+        }
+
+        .contracts,
+        .crew,
+        .ship_parts {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            gap: var(--gap);
+            justify-content: center;
+            align-content: center;
+            perspective: 2000px;
+            z-index: 3;
+        }
+
+        .area-title {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            margin: 0;
+            color: white;
+            font-size: clamp(0.65rem, 2vw, 1rem);
+            font-weight: bold;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            white-space: nowrap;
+        }
+
+        .contracts .card,
+        .crew .card {
+            aspect-ratio: 5 / 7;
+            width: var(--portrait-card-width);
+            height: auto;
+        }
+
+        .ship_parts .card {
+            aspect-ratio: 1;
+            width: var(--portrait-card-width);
+            height: var(--portrait-card-width);
+        }
+
+
+        .contracts {
+            grid-area: contracts;
+            grid-template-columns: repeat(4, var(--portrait-card-width));
+            grid-template-rows: repeat(2, calc(var(--portrait-card-width) * 7 / 5));
+        }
+
+        .crew {
+            grid-area: crew;
+            grid-template-columns: repeat(3, var(--portrait-card-width));
+            grid-template-rows: calc(var(--portrait-card-width) * 7 / 5);
+        }
+
+        .ship_parts {
+            grid-area: ship_parts;
+            grid-template-columns: repeat(3, var(--portrait-card-width));
+            grid-template-rows: repeat(2, var(--portrait-card-width));
+        }
+
+
+        .card {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            box-sizing: border-box;
+            border-radius: clamp(6px, 1.2vw, 18px);
+            border: solid 5px hsl(0, 0%, 0%);
+            background-image: var(--card-image);
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            /* border-radius: clamp(3px, 0.5vw, 10px); */
+            box-shadow: 0 12px 24px -10px rgb(0 0 0 / 50%);
+            transition: transform 0.1s ease-out;
+        }
+
+        .board {
+            position: relative;
+            z-index: 2;
+            height: 100dvh;
+            box-sizing: border-box;
+            padding: var(--page-padding);
+            display: grid;
+
+            /* Left side is 3 cards wide; right side is 4 cards wide. */
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+
+            /* Crew occupies the upper-left; ship parts fill the two lower rows. */
+            grid-template-rows: minmax(0, 1fr) repeat(2, minmax(0, 1fr));
+
+            grid-template-areas:
+                "crew       crew       crew       contracts contracts contracts contracts"
+                "ship_parts ship_parts ship_parts contracts contracts contracts contracts"
+                "ship_parts ship_parts ship_parts contracts contracts contracts contracts";
+
+            gap: var(--gap);
+        }
+            
+
+        .stars, .twinkling {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .stars {
+            background: url('../data/stars.png') repeat;
+            z-index: 0;
+        }
+
+        .twinkling {
+            background: url('../data/twinkling.png') repeat top center;
+            animation: move_twinkle 200s linear infinite;
+            z-index: 1;
+        }
+
+        .board,
+        .contracts,
+        .crew,
+        .ship_parts,
+        .card {
+            position: relative;
+        }
+
+        .stars,
+        .twinkling {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+        }
+
+    @keyframes move_twinkle {
+    0% { background-position: 0 0; }
+    100% { background-position: -10000px 5000px; }
+    }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="twinkling"></div>
+
+<div class="board">
+    <div class="contracts">
+        <h2 class="area-title">Contracts</h2>
+        <div class="card" id="contract1" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract2" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract3" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract4" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract5" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract6" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract7" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract8" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+    </div>
+
+    <div class="crew">
+        <h2 class="area-title">Crew</h2>
+        <div class="card" id="crew1" style="--card-image: url('../data/test_cards/Bill_Bendo.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="crew2" style="--card-image: url('../data/test_cards/Bill_Bendo.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="crew3" style="--card-image: url('../data/test_cards/Bill_Bendo.jpg'); --card-width: 375; --card-height: 525;"></div>
+    </div>
+
+    <div class="ship_parts">
+        <h2 class="area-title">Ship Parts</h2>
+        <div class="card" id="ship_part1" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part2" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part3" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part4" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part5" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part6" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
+    </div>
+
+</div>
+
+    <script>
+        const contract1 =  document.getElementById('contract1');
+        const contract2 = document.getElementById('contract2');
+        const contract3 = document.getElementById('contract3');
+        const contract4 = document.getElementById('contract4');
+        const contract5 = document.getElementById('contract5');
+        const contract6 = document.getElementById('contract6');
+        const contract7 = document.getElementById('contract7');
+        const contract8 = document.getElementById('contract8');
+
+        const crew1 =  document.getElementById('crew1');
+        const crew2 = document.getElementById('crew2');
+        const crew3 = document.getElementById('crew3');
+        
+        const ship_part1 = document.getElementById('ship_part1');
+        const ship_part2 = document.getElementById('ship_part2');
+        const ship_part3 = document.getElementById('ship_part3');
+        const ship_part4 = document.getElementById('ship_part4');
+        const ship_part5 = document.getElementById('ship_part5');
+        const ship_part6 = document.getElementById('ship_part6');
+
+        const cards = document.querySelectorAll(".card");
+
+        document.addEventListener("mousemove", (event) => {
+            max_rotate = 15; // Maximum rotation in degrees
+            max_translate = 1; // Maximum translation in pixels
+
+            const percentX = (event.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+            const percentY = (event.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+
+            const rotateX = -percentY * max_rotate;
+            const rotateY = percentX * max_rotate;
+            const translateX = percentX * max_translate;
+            const translateY = percentY * max_translate;
+
+            for (const card of cards) {
+                card.style.transform = `
+                    rotateX(${rotateX}deg)
+                    rotateY(${rotateY}deg)
+                    translateX(${translateX}px)
+                    translateY(${translateY}px)
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

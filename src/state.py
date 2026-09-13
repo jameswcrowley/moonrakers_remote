@@ -14,6 +14,8 @@ class BoardState:
     def __init__(self):
         self.zones = {}
 
+    # TODO: check whether this can handle multiple cards.
+    # TODO: also, check if it can handle multiple rapid updates in same/different zones.
     def update(self, zone_name, card_id, confidence):
         """
         Record the latest observation for a zone.
