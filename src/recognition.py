@@ -4,9 +4,22 @@ import cv2 as cv
 from abc import ABC, abstractmethod
 
 class MatchResult:
-    def __init__(self, matches_list, scores):
+    def __init__(self, matches_list, scores, card_ids=None):
         self.matches_list = matches_list
         self.scores = scores
+        self.card_ids = card_ids
+
+    def best_match(self):
+        """Return (card_id, confidence) for the lowest-distance match, or (None, 0.0) if empty.
+
+        Confidence is derived from the raw BFMatcher distance sum (lower is
+        better) via 1 / (1 + score), so it falls in (0, 1].
+        """
+        if not self.scores or self.card_ids is None:
+            return None, 0.0
+        best_idx = min(range(len(self.scores)), key=lambda i: self.scores[i])
+        confidence = 1.0 / (1.0 + self.scores[best_idx])
+        return self.card_ids[best_idx], confidence
 
 class CardMatcher(ABC):
     @abstractmethod
@@ -76,4 +89,32 @@ class ORBMatcher(CardMatcher):
             matches_list.append(good_matches)
         return matches_list, scores
 
-    
+
+def sift_extractor(image):
+    """Feature extractor suitable for CardLibrary.from_directory(feature_extractor=...)."""
+    return cv.SIFT_create().detectAndCompute(image, None)
+
+
+def orb_extractor(image):
+    """Feature extractor suitable for CardLibrary.from_directory(feature_extractor=...)."""
+    return cv.ORB_create().detectAndCompute(image, None)
+
+
+def match_against_library(observation, card_library, matcher: CardMatcher) -> MatchResult:
+    """
+    Match an observed card image against every card in a CardLibrary.
+
+    Args:
+        observation (np.ndarray): The candidate card image (already rectified/warped).
+        card_library (library.CardLibrary): Cards with precomputed keypoints/descriptors.
+        matcher (CardMatcher): SIFTMatcher() or ORBMatcher(), matching how the
+            library's features were extracted.
+
+    Returns:
+        MatchResult: Includes card_ids so best_match() can be used directly.
+    """
+    card_ids = list(card_library.cards.keys())
+    features = [(card_library.cards[card_id].keypoints, card_library.cards[card_id].descriptors) for card_id in card_ids]
+    result = matcher.match(observation, features)
+    result.card_ids = card_ids
+    return result

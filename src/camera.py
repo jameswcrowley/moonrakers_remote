@@ -3,7 +3,6 @@ import cv2 as cv
 import numpy as np
 
 
-MIN_CONTOUR_AREA = 5000
 
 def order_corners(pts):
     """Return corners as [top-left, top-right, bottom-right, bottom-left]."""
@@ -46,8 +45,18 @@ def find_contours(canny):
     return sorted(contours, key=cv.contourArea, reverse=True)
 
 
-def approximate_contours(contours, max_contours=1, min_area=MIN_CONTOUR_AREA):
-    """Return approximated contours to draw, with zero meaning no display limit."""
+def approximate_contours(contours, max_contours=1, min_area=5000):
+    """
+    Return approximated contours to draw, with zero meaning no display limit.
+    
+    Args:
+        contours (list): List of contours to approximate.
+        max_contours (int): Maximum number of contours to return. Zero means no limit.
+        min_area (float): Minimum area for a contour to be considered, in pixels.
+    
+    Returns:
+        list: List of approximated contours that meet the criteria.
+    """
     approximated = []
     for contour in contours:
         if cv.contourArea(contour) <= min_area:
@@ -72,6 +81,70 @@ def approximate_contours(contours, max_contours=1, min_area=MIN_CONTOUR_AREA):
         
     return approximated
 
+def find_nests(contours):
+    """
+    Identify potential nest-like contours based on specific criteria.
+    For every pair of card candidates, calculate:
+        - center separation
+        - orientation difference
+        - aspect-ratio difference
+        - area ratio
+        - containment
+        - IoU
+    Later, I'll also restrict it based on card duplicates appearing. 
+
+    Args:
+        contours (list): List of contours to evaluate.
+
+    Returns:
+        list: List of contours that are likely to be nests.
+    """
+    nests = []
+    outer_nests = []
+    contour_centers = [tuple(cv.minEnclosingCircle(contour)[0]) for contour in contours]
+    contour_orientations = [cv.minAreaRect(contour)[2] for contour in contours]
+    contour_aspect_ratios = []
+    for contour in contours:
+        (_, _), (w, h), angle = cv.minAreaRect(contour)
+        aspect_ratio = w / h if h != 0 else 0
+        contour_aspect_ratios.append(aspect_ratio)
+    contour_areas = [cv.contourArea(contour) for contour in contours]
+    contour_containment = [cv.boundingRect(contour) for contour in contours]
+
+    threshold_center_distance = 100  # threshold for contour center distance, in pixels
+    threshold_orientation_difference = 15  # threshold for contour orientation difference, in degrees
+    threshold_aspect_ratio_difference = 0.3  # threshold for contour aspect-ratio difference
+    threshold_area_ratio = 0.5  # threshold for contour area ratio
+    threshold_containment = 0.5  # threshold for contour containment
+
+    for i, contour in enumerate(contours):
+        for j, other_contour in enumerate(contours):
+            if i == j:
+                continue
+
+            # Calculate various metrics between the current contour and the other contour
+            center_distance = np.linalg.norm(np.array(contour_centers[i]) - np.array(contour_centers[j]))
+            orientation_difference = abs(contour_orientations[i] - contour_orientations[j])
+            aspect_ratio_difference = abs(contour_aspect_ratios[i] - contour_aspect_ratios[j])
+            area_ratio = min(contour_areas[i], contour_areas[j]) / max(contour_areas[i], contour_areas[j])
+            x1, y1, w1, h1 = contour_containment[i]
+            x2, y2, w2, h2 = contour_containment[j]
+            containment = max(0, min(x1 + w1, x2 + w2) - max(x1, x2)) * max(0, min(y1 + h1, y2 + h2) - max(y1, y2)) / (w1 * h1)
+
+            if (center_distance < threshold_center_distance and
+                orientation_difference < threshold_orientation_difference and
+                aspect_ratio_difference < threshold_aspect_ratio_difference and
+                area_ratio > threshold_area_ratio and
+                containment > threshold_containment):
+                # if they are nested, append the outer one to a list of outer contours:
+                outer_nest = max(contour, other_contour, key=cv.contourArea)
+                outer_nests.append(outer_nest)
+
+                nests.append(contour)
+                break
+
+    return nests, outer_nests
+
 
 def find_screen_contour(contours):
     """Choose the largest approximated quadrilateral for perspective correction."""
@@ -84,7 +157,16 @@ def contour_area(pts):
 
 
 def add_frame_info(frame, capture):
-    """Add the current camera FPS and resolution to the frame."""
+    """
+    Add the current camera FPS and resolution to the frame.
+
+    Args:
+        frame (np.ndarray): The input camera frame.
+        capture (cv.VideoCapture): The camera capture object.
+
+    Returns:
+        None
+    """
     fps = capture.get(cv.CAP_PROP_FPS)
     width = int(capture.get(cv.CAP_PROP_FRAME_WIDTH))
     height = int(capture.get(cv.CAP_PROP_FRAME_HEIGHT))
@@ -92,7 +174,16 @@ def add_frame_info(frame, capture):
     cv.putText(frame, text, (50, 50), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 150, 0), 2, cv.LINE_AA)
 
 def add_contour_info(frame, contours):
-    """Add the size of the detected contours below the detected contour."""
+    """
+    Add the size of the detected contours below the detected contour.
+
+    Args:
+        frame (np.ndarray): The input camera frame.
+        contours (list): List of contours to annotate.
+
+    Returns:
+        None
+    """
     y_offset = 20
     for contour in contours:
         area = cv.contourArea(contour)
@@ -103,10 +194,24 @@ def add_contour_info(frame, contours):
 
 
 def process_frame(frame, capture, max_contours, stabilizer = None):
-    """Detect, draw, and rectify contours for one camera frame."""
+    """
+    Detect, draw, and rectify contours for one camera frame.
+
+    Args:
+        frame (np.ndarray): The input camera frame.
+        capture (cv.VideoCapture): The camera capture object.
+        max_contours (int): Maximum number of contours to consider.
+        stabilizer (ContourStabilizer, optional): Stabilizer for tracking stable quads.
+
+    Returns:
+        tuple: A tuple containing the processed frame, the edge-detected frame, and the transformed frame if a screen contour is found.
+    """
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
     canny = edge_detection_canny(gray)
     contours = approximate_contours(find_contours(canny), max_contours)
+
+    # check for nests:
+    nests, outer_nests = find_nests(contours)
 
     if stabilizer is not None:
         confirmed = stabilizer.update(contours)
@@ -129,6 +234,8 @@ def process_frame(frame, capture, max_contours, stabilizer = None):
     is_stable = [stabilizer is not None and stabilizer.matches_any(c, confirmed) for c in contours]
     stable = [c for c, s in zip(contours, is_stable) if s]
     candidates = [c for c, s in zip(contours, is_stable) if not s]
+    if nests:
+        cv.drawContours(frame, outer_nests, -1, (255, 0, 0), 10)
     cv.drawContours(frame, candidates, -1, (100, 255, 255), 5)
     cv.drawContours(frame, stable, -1, (50, 255, 100), 5)
     if screen_contour is not None:
@@ -163,6 +270,9 @@ def extract_stable_quads(frame, max_contours, stabilizer = None, method = 'canny
     
     contours = approximate_contours(find_contours(edges), max_contours)
 
+    # check for nests:
+    nests, contours = find_nests(contours)
+
     if stabilizer is not None:
         confirmed = stabilizer.update(contours)
     else:
@@ -171,12 +281,13 @@ def extract_stable_quads(frame, max_contours, stabilizer = None, method = 'canny
     is_stable = [stabilizer is not None and stabilizer.matches_any(c, confirmed) for c in contours]
     stable = [c for c, s in zip(contours, is_stable) if s]
     candidates = [c for c, s in zip(contours, is_stable) if not s]
+    # if outer_nests:
+    #     cv.drawContours(frame, outer_nests, -1, (255, 0, 0), 10)
     cv.drawContours(frame, candidates, -1, (100, 255, 255), 5)
     cv.drawContours(frame, stable, -1, (50, 255, 100), 5)
     add_contour_info(frame, contours)
 
     return stable, frame
-
 
 class ContourTrack:
     """A single tracked quadrilateral with its own confirmation state."""
@@ -205,7 +316,7 @@ class ContourStabilizer:
         smoothing (float): Smoothing factor applied to confirmed tracks' positions.
 
     """
-    def __init__(self, confirm_frames=50, drop_after=20, match_thresh=10, smoothing=0.3):
+    def __init__(self, confirm_frames=50, drop_after=100, match_thresh=10, smoothing=0.3):
         self.confirm_frames = confirm_frames
         self.drop_after = drop_after
         self.match_thresh = match_thresh
@@ -289,7 +400,7 @@ def main():
                 break
 
             #frame, canny, transformed = process_frame(frame, capture, args.display_contours, stabilizer=stabilizer)
-            stable, frame = extract_stable_quads(frame, args.display_contours, stabilizer=stabilizer, method='threshold')
+            stable, frame = extract_stable_quads(frame, args.display_contours, stabilizer=stabilizer, method='canny')
             cv.imshow("frame", frame[:, ::-1])
             # cv.imshow("canny", canny)
             # if transformed is not None:
