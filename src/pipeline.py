@@ -18,9 +18,9 @@ except ImportError:  # running as a script, or with src/ on sys.path directly
 
 # TODO: point these at the real image directories for each card type.
 LIBRARY_DIRECTORIES = {
-    "contracts": "data/downloaded_images/contracts",
-    "crew": "data/downloaded_images/crew",
-    "ship_parts": "data/downloaded_images/ship_parts",
+    "contracts": "data/saved_images/contracts",
+    "crew": "data/saved_images/crew",
+    "ship_parts": "data/saved_images/ship_parts",
 }
 
 MATCHERS = {

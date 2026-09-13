@@ -58,4 +58,4 @@ class CardLibrary:
         return instance
 
 if __name__ == "__main__":
-    library = CardLibrary.from_directory("data/downloaded_images/contracts")
+    library = CardLibrary.from_directory("data/saved_images/contracts")
