@@ -15,7 +15,7 @@
 
         body {
             min-height: 100dvh;
-            background: #000;
+            background: #000000;
             font-family: Verdana, Geneva, Tahoma, sans-serif;
         }
 
@@ -47,7 +47,7 @@
             top: 50%;
             left: 0;
             margin: 0;
-            color: white;
+            color: rgb(240, 218, 249);
             font-size: clamp(0.65rem, 2vw, 1rem);
             font-weight: bold;
             letter-spacing: 0.08em;
@@ -145,7 +145,7 @@
 
         .twinkling {
             background: url('../data/twinkling.png') repeat top center;
-            animation: move_twinkle 200s linear infinite;
+            animation: move_twinkle 800s linear infinite;
             z-index: 1;
         }
 
@@ -230,8 +230,8 @@
         const cards = document.querySelectorAll(".card");
 
         document.addEventListener("mousemove", (event) => {
-            max_rotate = 15; // Maximum rotation in degrees
-            max_translate = 1; // Maximum translation in pixels
+            max_rotate = 12; // Maximum rotation in degrees
+            max_translate = 5; // Maximum translation in pixels
 
             const percentX = (event.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
             const percentY = (event.clientY - window.innerHeight / 2) / (window.innerHeight / 2);

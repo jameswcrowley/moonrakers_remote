@@ -45,7 +45,34 @@ def find_contours(canny):
     return sorted(contours, key=cv.contourArea, reverse=True)
 
 
-def approximate_contours(contours, max_contours=1, min_area=5000):
+def _bounding_box_iou(box1, box2):
+    """Intersection-over-union of two (x, y, w, h) rectangles."""
+    x1, y1, w1, h1 = box1
+    x2, y2, w2, h2 = box2
+    inter_w = max(0, min(x1 + w1, x2 + w2) - max(x1, x2))
+    inter_h = max(0, min(y1 + h1, y2 + h2) - max(y1, y2))
+    inter_area = inter_w * inter_h
+    union_area = w1 * h1 + w2 * h2 - inter_area
+    return inter_area / union_area if union_area else 0
+
+
+def deduplicate_quads(quads, iou_threshold=0.6):
+    """Collapse overlapping quads (e.g. a card's inner and outer Canny edge) to the largest one each."""
+    ordered = sorted(quads, key=cv.contourArea, reverse=True)
+    kept, kept_boxes = [], []
+    for quad in ordered:
+        box = cv.boundingRect(quad)
+        if any(_bounding_box_iou(box, kept_box) > iou_threshold for kept_box in kept_boxes):
+            continue
+        kept.append(quad)
+        kept_boxes.append(box)
+    return kept
+
+
+def approximate_contours(contours,
+                        max_contours=1, 
+                        min_area=5000,
+                        expected_aspect_ratio=None):
     """
     Return approximated contours to draw, with zero meaning no display limit.
     
@@ -53,7 +80,7 @@ def approximate_contours(contours, max_contours=1, min_area=5000):
         contours (list): List of contours to approximate.
         max_contours (int): Maximum number of contours to return. Zero means no limit.
         min_area (float): Minimum area for a contour to be considered, in pixels.
-    
+        expected_aspect_ratio (float): Expected aspect ratio for the contour. If None, this check is skipped.
     Returns:
         list: List of approximated contours that meet the criteria.
     """
@@ -76,9 +103,13 @@ def approximate_contours(contours, max_contours=1, min_area=5000):
 
         if conditions:
             approximated.append(approx)
-        if max_contours and len(approximated) >= max_contours:
-            break
-        
+
+    # RETR_LIST yields both the inner and outer edge of each card's outline; collapse those before capping.
+    approximated = deduplicate_quads(approximated)
+
+    if max_contours:
+        approximated = approximated[:max_contours]
+
     return approximated
 
 def find_nests(contours):
@@ -316,7 +347,7 @@ class ContourStabilizer:
         smoothing (float): Smoothing factor applied to confirmed tracks' positions.
 
     """
-    def __init__(self, confirm_frames=50, drop_after=100, match_thresh=10, smoothing=0.3):
+    def __init__(self, confirm_frames=20, drop_after=10, match_thresh=20, smoothing=0.3):
         self.confirm_frames = confirm_frames
         self.drop_after = drop_after
         self.match_thresh = match_thresh

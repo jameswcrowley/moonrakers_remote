@@ -6,29 +6,34 @@ import time
 
 class BoardState:
     """
-    Current best-guess card occupying each hard-coded zone, across all boards.
+    Current best-guess cards occupying each hard-coded zone, across all boards.
 
-    zones maps zone_name -> {"card_id": str or None, "confidence": float, "last_updated": epoch seconds}.
+    zones maps zone_name -> {"cards": [{"card_id": str or None, "confidence": float}, ...], "last_updated": epoch seconds}.
+    One entry in "cards" per card slot detected in the zone that frame.
     """
 
     def __init__(self):
         self.zones = {}
 
-    # TODO: check whether this can handle multiple cards.
-    # TODO: also, check if it can handle multiple rapid updates in same/different zones.
-    def update(self, zone_name, card_id, confidence):
+    def update(self, zone_name, cards):
         """
         Record the latest observation for a zone.
 
+        Args:
+            zone_name (str): Which zone this observation is for.
+            cards (list): List of (card_id, confidence) tuples, one per card
+                slot detected in the zone this frame (empty if none detected).
+
         Returns:
-            bool: True if this changed the zone's recorded card_id (i.e. the
+            bool: True if this changed the zone's recorded card_ids (i.e. the
             state is now "dirty" and worth persisting).
         """
         previous = self.zones.get(zone_name)
-        changed = previous is None or previous["card_id"] != card_id
+        previous_ids = [card["card_id"] for card in previous["cards"]] if previous else None
+        new_ids = [card_id for card_id, _ in cards]
+        changed = previous_ids != new_ids
         self.zones[zone_name] = {
-            "card_id": card_id,
-            "confidence": confidence,
+            "cards": [{"card_id": card_id, "confidence": confidence} for card_id, confidence in cards],
             "last_updated": time.time(),
         }
         return changed

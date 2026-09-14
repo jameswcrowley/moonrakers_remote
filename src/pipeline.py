@@ -9,9 +9,10 @@ import time
 import cv2 as cv
 
 try:
-    from . import boardrectifier, library, recognition, state
+    from . import boardrectifier, camera, library, recognition, state
 except ImportError:  # running as a script, or with src/ on sys.path directly
     import boardrectifier
+    import camera
     import library
     import recognition
     import state
@@ -41,40 +42,62 @@ def load_libraries(feature_extractor):
     return libraries
 
 
-def process_boards(frame, libraries, matcher, board_state: state.BoardState):
+def process_boards(frame, libraries, matcher, board_state: state.BoardState, board_stabilizers, zone_stabilizers):
     """Detect, rectify, and match every configured board/zone for one frame.
 
+    Args:
+        board_stabilizers (dict): board_id -> camera.ContourStabilizer, persisted
+            across frames so board corners are smoothed over time.
+        zone_stabilizers (dict): zone name -> camera.ContourStabilizer, persisted
+            across frames so each zone's card outlines are smoothed over time.
+
     Returns:
-        bool: True if any zone's recorded card changed this frame.
+        bool: True if any zone's recorded cards changed this frame.
     """
 
-    # TODO: check wheter this can process multiple cards or if it'll stop after the first one in each zone. Can't remember if identify_card_subarea handles multiple cards.
     aruco_corners, aruco_ids = boardrectifier.detect_aruco_markers(frame)
 
-    dirty = False # flag for whether any zone's recorded card changed this frame
+    dirty = False # flag for whether any zone's recorded cards changed this frame
     for board_config in boardrectifier.BOARD_CONFIGS.values():
-        rectified = boardrectifier.rectify_board(frame, aruco_corners, aruco_ids, board_config)
+        board_stabilizer = board_stabilizers.setdefault(board_config.board_id, camera.ContourStabilizer())
+        rectified = boardrectifier.rectify_board(frame, aruco_corners, aruco_ids, board_config, stabilizer=board_stabilizer)
         if rectified is None:
             continue
 
         for zone in board_config.zones:
+            print(f"Processing zone: {zone.name}")
             card_library = libraries.get(zone.library_type)
             if card_library is None or not card_library.cards:
                 continue
 
-            card_image = boardrectifier.identify_card_subarea(rectified, zone)
-            if card_image is None:
-                changed = board_state.update(zone.name, None, 0.0)
+            # draw box on rectified board for this zone:
+            x, y, w, h = zone.roi
+            cv.rectangle(rectified, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv.putText(rectified, zone.name, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 5)
+            cv.imshow("rectified_board_debug", rectified)
+
+            zone_stabilizer = zone_stabilizers.setdefault(zone.name, camera.ContourStabilizer())
+            card_images_and_outlines = boardrectifier.identify_card_subarea(rectified, zone, stabilizer=zone_stabilizer)
+            print(f"Identified {len(card_images_and_outlines) if card_images_and_outlines else 0} card(s) in zone: {zone.name}")
+
+            if card_images_and_outlines is None:
+                changed = board_state.update(zone.name, [])
                 dirty = dirty or changed
                 continue
+            else:
+                cards = []
+                for i, card_image in enumerate(card_images_and_outlines):
+                    card_image, (cx, cy, cw, ch) = card_image
+                    cv.imshow(f"card_debug_{zone.name}_{i}", card_image)
+                    result = recognition.match_against_library(card_image, card_library, matcher)
+                    card_id, confidence = result.best_match()
+                    if confidence < MIN_MATCH_CONFIDENCE:
+                        card_id = None
 
-            result = recognition.match_against_library(card_image, card_library, matcher)
-            card_id, confidence = result.best_match()
-            if confidence < MIN_MATCH_CONFIDENCE:
-                card_id = None
+                    cards.append((card_id, confidence))
 
-            changed = board_state.update(zone.name, card_id, confidence)
-            dirty = dirty or changed
+                changed = board_state.update(zone.name, cards)
+                dirty = dirty or changed
 
     return dirty
 
@@ -82,7 +105,7 @@ def process_boards(frame, libraries, matcher, board_state: state.BoardState):
 def parse_arguments():
     """Parse camera and pipeline options."""
     parser = argparse.ArgumentParser(description="Track Moonrakers board state from a camera feed.")
-    parser.add_argument("--camera", type=int, default=1, help="Camera device index (default: 1).")
+    parser.add_argument("--camera", type=int, default=0, help="Camera device index (default: 1).")
     parser.add_argument("--matcher", choices=list(MATCHERS.keys()), default="sift", help="Feature matcher to use.")
     parser.add_argument("--output", default="board_state.json", help="Path to write the board state JSON.")
     return parser.parse_args()
@@ -94,6 +117,8 @@ def main():
     matcher, feature_extractor = MATCHERS[args.matcher]
     libraries = load_libraries(feature_extractor)
     board_state = state.BoardState()
+    board_stabilizers = {}
+    zone_stabilizers = {}
 
     capture = cv.VideoCapture(args.camera)
     if not capture.isOpened():
@@ -107,8 +132,9 @@ def main():
                 print("Can't receive frame (stream end?). Exiting ...")
                 break
 
-            if process_boards(frame, libraries, matcher, board_state):
+            if process_boards(frame, libraries, matcher, board_state, board_stabilizers, zone_stabilizers):
                 board_state.save(args.output)
+                print("Board state updated.")
 
             cv.imshow("frame", frame[:, ::-1])
             if cv.waitKey(1) & 0xFF == ord("q"):

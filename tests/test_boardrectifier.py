@@ -94,7 +94,8 @@ def test_identify_card_subarea_finds_and_warps_card():
     cv.rectangle(rectified_board, (50, 50), (250, 250), (255, 255, 255), -1)
     zone = boardrectifier.CardZone(name="slot_1", roi=(0, 0, 300, 300), library_type="crew")
 
-    card_image = boardrectifier.identify_card_subarea(rectified_board, zone, output_size=(60, 84))
+    cards = boardrectifier.identify_card_subarea(rectified_board, zone, output_size=(60, 84))
 
-    assert card_image is not None
+    assert cards is not None
+    card_image, _ = cards[0]
     assert card_image.shape[:2] == (84, 60)
