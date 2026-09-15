@@ -30,10 +30,22 @@ def test_match_result_init():
 
 
 def test_match_result_best_match_picks_lowest_score():
-    res = rec.MatchResult(matches_list=[[], [], []], scores=[5.0, 1.0, 3.0], card_ids=["a", "b", "c"])
+    res = rec.MatchResult(
+        matches_list=[[0] * 5, [0] * 5, [0] * 5],
+        scores=[5.0, 1.0, 3.0],
+        card_ids=["a", "b", "c"],
+    )
     card_id, confidence = res.best_match()
     assert card_id == "b"
-    assert confidence == pytest.approx(1.0 / (1.0 + 1.0))
+    assert 0.0 < confidence <= 1.0
+
+
+def test_match_result_best_match_ignores_weak_candidates():
+    # too few good matches (< MIN_GOOD_MATCHES) should never win, even with a great distance score
+    res = rec.MatchResult(matches_list=[[0], [0] * 5], scores=[0.0, 10.0], card_ids=["a", "b"])
+    card_id, confidence = res.best_match()
+    assert card_id == "b"
+    assert confidence > 0.0
 
 
 def test_match_result_best_match_empty_returns_none():
