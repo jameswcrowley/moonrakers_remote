@@ -95,11 +95,23 @@ def approximate_contours(contours,
         rect = cv.minAreaRect(approx)
 
         (_, _), (w, h), angle = rect
+        if w < h:
+            w, h = h, w
 
         rectangularity = area / (w * h) if w * h != 0 else 0
         aspect_ratio = w / h if h != 0 else 0
 
-        conditions = (rectangularity > 0.5 and aspect_ratio > 0.3 and aspect_ratio < 2 and cv.isContourConvex(approx) and len(approx) == 4)
+        if expected_aspect_ratio is not None:
+            conditions = (rectangularity > 0.5 
+                          and abs(aspect_ratio - expected_aspect_ratio) <= 0.5 
+                          and cv.isContourConvex(approx) 
+                          and len(approx) == 4)
+        else:
+            conditions = (rectangularity > 0.5
+                          and aspect_ratio > 0.35 
+                          and aspect_ratio < 2 
+                          and cv.isContourConvex(approx) 
+                          and len(approx) == 4)
 
         if conditions:
             approximated.append(approx)

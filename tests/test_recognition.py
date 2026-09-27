@@ -122,3 +122,71 @@ def test_match_against_library_populates_card_ids(synthetic_image_and_library):
     card_id, confidence = result.best_match()
     assert card_id == "card_a"
     assert 0.0 < confidence <= 1.0
+
+
+def test_best_guess_stabilizer_confirms_after_consecutive_frames():
+    stabilizer = rec.BestGuessStabilizer(confirm_after=3, drop_after=3, confidence_threshold=0.2)
+
+    assert stabilizer.update([("a", 0.9)]) == (None, 0.0)
+    assert stabilizer.update([("a", 0.9)]) == (None, 0.0)
+    assert stabilizer.update([("a", 0.9)]) == ("a", 0.9)
+
+
+def test_best_guess_stabilizer_requires_truly_consecutive_frames():
+    stabilizer = rec.BestGuessStabilizer(confirm_after=3, drop_after=3, confidence_threshold=0.2)
+
+    stabilizer.update([("a", 0.9)])
+    stabilizer.update([])  # a low-confidence/miss frame should reset the streak
+    stabilizer.update([("a", 0.9)])
+    assert stabilizer.update([("a", 0.9)]) == (None, 0.0)
+    assert stabilizer.update([("a", 0.9)]) == ("a", 0.9)
+
+
+def test_best_guess_stabilizer_holds_guess_despite_disagreement():
+    stabilizer = rec.BestGuessStabilizer(confirm_after=2, drop_after=3, confidence_threshold=0.2)
+
+    stabilizer.update([("a", 0.9)])
+    stabilizer.update([("a", 0.9)])
+    assert stabilizer.get_best_guess() == ("a", 0.9)
+
+    # a single disagreeing frame shouldn't immediately displace the held guess
+    assert stabilizer.update([("b", 0.9)]) == ("a", 0.9)
+
+
+def test_best_guess_stabilizer_drops_after_consecutive_misses():
+    stabilizer = rec.BestGuessStabilizer(confirm_after=2, drop_after=2, confidence_threshold=0.2)
+
+    stabilizer.update([("a", 0.9)])
+    stabilizer.update([("a", 0.9)])
+    assert stabilizer.get_best_guess() == ("a", 0.9)
+
+    stabilizer.update([])
+    assert stabilizer.update([]) == (None, 0.0)
+
+
+def test_rolling_average_stabilizer_averages_over_window():
+    stabilizer = rec.RollingAverageStabilizer(window_size=4)
+
+    stabilizer.update(("a", 1.0))
+    stabilizer.update(("a", 1.0))
+    card_id, confidence = stabilizer.update(("a", 1.0))
+
+    assert card_id == "a"
+    assert confidence == pytest.approx(0.75)  # 3 observations averaged over a window of 4
+
+
+def test_rolling_average_stabilizer_decays_after_card_leaves_window():
+    stabilizer = rec.RollingAverageStabilizer(window_size=2)
+
+    stabilizer.update(("a", 1.0))
+    stabilizer.update(("a", 1.0))
+    stabilizer.update((None, 0.0))
+    card_id, confidence = stabilizer.update((None, 0.0))
+
+    assert card_id is None
+    assert confidence == 0.0
+
+
+def test_rolling_average_stabilizer_empty_returns_none():
+    stabilizer = rec.RollingAverageStabilizer(window_size=4)
+    assert stabilizer.get_best_rolling_average() == (None, 0.0)

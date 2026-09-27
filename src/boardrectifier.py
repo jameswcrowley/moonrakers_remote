@@ -103,8 +103,8 @@ BOARD_CONFIGS = {
         },
         rectified_size=(1500, 1000),
         zones=[
-            CardZone(name="crew_slot_1", roi=(600, 0, 900, 450), library_type="crew", expected_number_cards=3, expected_aspect_ratio=0.7),
-            CardZone(name="ship_part_slot_1", roi=(600, 450, 900, 550), library_type="ship_parts", expected_number_cards=6, expected_aspect_ratio=1),
+            CardZone(name="crew_slot_1", roi=(600, 0, 900, 430), library_type="crew", expected_number_cards=3, expected_aspect_ratio=1.35),
+            CardZone(name="ship_part_slot_1", roi=(600, 430, 900, 570), library_type="ship_parts", expected_number_cards=6, expected_aspect_ratio=1),
         ],
     ),
 }
@@ -158,8 +158,24 @@ def rectify_board(frame, aruco_corners, aruco_ids, board_config: BoardConfig, st
     matrix = cv.getPerspectiveTransform(src_points, dst_points)
     return cv.warpPerspective(frame, matrix, (w, h))
 
+# TODO: test this and add unit test for it. 
+def order_cards(cards):
+    """
+    Order detected card contours by their coordinates (left to right, then top to bottom).
 
-def identify_card_subarea(rectified_board, zone: CardZone, output_size=CARD_OUTPUT_SIZE, stabilizer=None):
+    Args:
+        cards (list): List of card contours, each represented as a quadrilateral (4 points).
+
+    Returns:
+        list: The sorted list of card contours.
+    """
+    # if there are multiple cards detected, sort them by their coordinates (left to right, then top to bottom):
+    if not cards:
+        return []
+    # Sort primarily by y (top to bottom), then by x (left to right)
+    return sorted(cards, key=lambda c: (c[:, 0, 1].mean(), c[:, 0, 0].mean()))
+
+def identify_card_subarea(rectified_board, zone: CardZone, output_size=CARD_OUTPUT_SIZE, edge_detection ='canny', stabilizer=None):
     #TODO: I probably want to return all candidates and sort/match them later, not cut off here....
     """
     Crop a zone out of a rectified board and locate/warp the card(s) inside it.
@@ -182,11 +198,19 @@ def identify_card_subarea(rectified_board, zone: CardZone, output_size=CARD_OUTP
     if crop.size == 0:
         return None
 
+    if zone.expected_aspect_ratio == 1:
+        output_size = (output_size[0], output_size[0])
+
     gray = cv.cvtColor(crop, cv.COLOR_BGR2GRAY)
-    edges = camera.edge_detection_canny(gray)
+    if edge_detection == 'canny':
+        edges = camera.edge_detection_canny(gray)
+    elif edge_detection == 'threshold':
+        edges = camera.edge_detection_thresholding(gray, threshold1 = 180, threshold2 = 255)
+    else:
+        raise ValueError(f"Unsupported edge detection method: {edge_detection}")
     # show the edges for debugging:
     cv.imshow(f"edges_debug_{zone.name}", edges)
-    contours = camera.approximate_contours(camera.find_contours(edges), max_contours=number_cards, min_area=500)
+    contours = camera.approximate_contours(camera.find_contours(edges), max_contours=number_cards, min_area=500, expected_aspect_ratio=zone.expected_aspect_ratio)
     if not contours:
         return None
 
@@ -197,6 +221,9 @@ def identify_card_subarea(rectified_board, zone: CardZone, output_size=CARD_OUTP
         confirmed = stabilizer.update(contours)
         if len(confirmed) >= number_cards:
             quads = confirmed
+
+    # order the quads consistently (left to right, then top to bottom)
+    quads = order_cards(np.array(quads))
 
     for i in range(number_cards):
         if i >= len(quads):

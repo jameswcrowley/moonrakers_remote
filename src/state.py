@@ -14,6 +14,7 @@ class BoardState:
 
     def __init__(self):
         self.zones = {}
+        self.used_cards = {}  # zone_name -> card_ids ever drawn, so reroll/clear never reuses them
 
     def update(self, zone_name, cards):
         """
@@ -38,8 +39,33 @@ class BoardState:
         }
         return changed
 
+    def initialize_zone(self, zone_name, slot_count):
+        """Ensure a zone has a stable number of empty card slots."""
+        previous = self.zones.get(zone_name)
+        if previous and len(previous["cards"]) == slot_count:
+            return False
+        return self.update(zone_name, [(None, 0.0)] * slot_count)
+
+    def set_slot(self, zone_name, slot_index, slot_count, card_id, confidence=1.0):
+        """Set one card slot, initializing the zone to its configured size."""
+        if not 0 <= slot_index < slot_count:
+            raise IndexError(f"Slot index {slot_index} is outside zone '{zone_name}'.")
+        self.initialize_zone(zone_name, slot_count)
+        cards = [
+            (card["card_id"], card["confidence"])
+            for card in self.zones[zone_name]["cards"]
+        ]
+        cards[slot_index] = (card_id, confidence if card_id is not None else 0.0)
+        return self.update(zone_name, cards)
+
+    def mark_used(self, zone_name, card_id):
+        """Record a card as drawn so a later reroll/clear can't reuse it."""
+        used = self.used_cards.setdefault(zone_name, [])
+        if card_id not in used:
+            used.append(card_id)
+
     def to_dict(self):
-        return {"zones": self.zones}
+        return {"zones": self.zones, "used_cards": self.used_cards}
 
     def save(self, path):
         """Write the current state to a JSON file at path."""
@@ -53,4 +79,5 @@ class BoardState:
         with open(path, "r") as f:
             data = json.load(f)
         instance.zones = data.get("zones", {})
+        instance.used_cards = data.get("used_cards", {})
         return instance

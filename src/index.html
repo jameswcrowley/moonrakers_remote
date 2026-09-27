@@ -106,6 +106,112 @@
             transition: transform 0.1s ease-out;
         }
 
+        .card.interactive {
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .slot-clear {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            z-index: 2;
+            border: 1px solid rgb(255 255 255 / 70%);
+            border-radius: 4px;
+            padding: 5px 7px;
+            color: white;
+            background: rgb(0 0 0 / 75%);
+            font: inherit;
+            font-size: 0.65rem;
+            cursor: pointer;
+        }
+
+        .mode-status {
+            position: fixed;
+            z-index: 5;
+            top: 8px;
+            right: 10px;
+            max-width: min(70vw, 260px);
+            padding: 6px 9px;
+            color: white;
+            background: rgb(0 0 0 / 75%);
+            font-size: 0.75rem;
+            overflow-wrap: anywhere;
+        }
+
+        .card-picker {
+            width: min(440px, calc(100vw - 32px));
+            max-height: min(80dvh, 650px);
+            box-sizing: border-box;
+            border: 1px solid rgb(255 255 255 / 30%);
+            border-radius: 6px;
+            padding: 16px;
+            color: white;
+            background: #101216;
+        }
+
+        .card-picker::backdrop {
+            background: rgb(0 0 0 / 75%);
+        }
+
+        .picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .picker-header h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .picker-close,
+        .picker-option {
+            border: 1px solid rgb(255 255 255 / 25%);
+            border-radius: 4px;
+            color: white;
+            background: #222831;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .picker-close {
+            padding: 6px 9px;
+        }
+
+        .picker-search {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #747b84;
+            border-radius: 4px;
+            padding: 9px;
+            color: white;
+            background: #090a0c;
+            font: inherit;
+        }
+
+        .picker-options {
+            display: grid;
+            gap: 5px;
+            max-height: 52dvh;
+            overflow: auto;
+            margin-top: 10px;
+        }
+
+        .picker-option {
+            min-height: 40px;
+            padding: 8px 10px;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+
+        .picker-option:hover,
+        .picker-close:hover {
+            background: #39414b;
+        }
+
         .board {
             position: relative;
             z-index: 2;
@@ -139,12 +245,12 @@
         }
 
         .stars {
-            background: url('../data/stars.png') repeat;
+            background: url('./server_images/stars.png') repeat;
             z-index: 0;
         }
 
         .twinkling {
-            background: url('../data/twinkling.png') repeat top center;
+            background: url('./server_images/twinkling.png') repeat top center;
             animation: move_twinkle 800s linear infinite;
             z-index: 1;
         }
@@ -164,6 +270,60 @@
             pointer-events: none;
         }
 
+        @media (max-width: 600px) {
+            html,
+            body {
+                height: auto;
+                min-height: 100%;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+
+            :root {
+                --page-padding: 12px;
+                --gap: 8px;
+                --portrait-card-width: min(105px, calc((100vw - 48px) / 4));
+            }
+
+            .board {
+                height: auto;
+                min-height: 100dvh;
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: auto;
+                grid-template-areas:
+                    "crew"
+                    "ship_parts"
+                    "contracts";
+                gap: 20px;
+            }
+
+            .area-title {
+                position: static;
+                grid-column: 1 / -1;
+                transform: none;
+                white-space: normal;
+                font-size: 0.8rem;
+            }
+
+            .contracts,
+            .crew,
+            .ship_parts {
+                align-content: start;
+            }
+
+            .contracts {
+                grid-template-rows: auto repeat(2, calc(var(--portrait-card-width) * 7 / 5));
+            }
+
+            .crew {
+                grid-template-rows: auto calc(var(--portrait-card-width) * 7 / 5);
+            }
+
+            .ship_parts {
+                grid-template-rows: auto repeat(2, var(--portrait-card-width));
+            }
+        }
+
     @keyframes move_twinkle {
     0% { background-position: 0 0; }
     100% { background-position: -10000px 5000px; }
@@ -173,38 +333,48 @@
 <body>
     <div class="stars"></div>
     <div class="twinkling"></div>
+    <div class="mode-status" id="modeStatus" aria-live="polite">Connecting...</div>
 
 <div class="board">
     <div class="contracts">
         <h2 class="area-title">Contracts</h2>
-        <div class="card" id="contract1" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="contract2" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="contract3" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="contract4" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="contract5" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="contract6" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="contract7" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="contract8" style="--card-image: url('../data/test_cards/Black_Hole.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract1" style="--card-image: url('./server_images/current_contract1.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract2" style="--card-image: url('./server_images/current_contract2.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract3" style="--card-image: url('./server_images/current_contract3.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract4" style="--card-image: url('./server_images/current_contract4.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract5" style="--card-image: url('./server_images/current_contract5.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract6" style="--card-image: url('./server_images/current_contract6.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract7" style="--card-image: url('./server_images/current_contract7.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="contract8" style="--card-image: url('./server_images/current_contract8.jpg'); --card-width: 375; --card-height: 525;"></div>
     </div>
 
     <div class="crew">
         <h2 class="area-title">Crew</h2>
-        <div class="card" id="crew1" style="--card-image: url('../data/test_cards/Bill_Bendo.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="crew2" style="--card-image: url('../data/test_cards/Bill_Bendo.jpg'); --card-width: 375; --card-height: 525;"></div>
-        <div class="card" id="crew3" style="--card-image: url('../data/test_cards/Bill_Bendo.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="crew1" style="--card-image: url('./server_images/current_crew1.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="crew2" style="--card-image: url('./server_images/current_crew2.jpg'); --card-width: 375; --card-height: 525;"></div>
+        <div class="card" id="crew3" style="--card-image: url('./server_images/current_crew3.jpg'); --card-width: 375; --card-height: 525;"></div>
     </div>
 
     <div class="ship_parts">
         <h2 class="area-title">Ship Parts</h2>
-        <div class="card" id="ship_part1" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
-        <div class="card" id="ship_part2" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
-        <div class="card" id="ship_part3" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
-        <div class="card" id="ship_part4" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
-        <div class="card" id="ship_part5" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
-        <div class="card" id="ship_part6" style="--card-image: url('../data/test_cards/Flash.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part1" style="--card-image: url('./server_images/current_ship_part1.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part2" style="--card-image: url('./server_images/current_ship_part2.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part3" style="--card-image: url('./server_images/current_ship_part3.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part4" style="--card-image: url('./server_images/current_ship_part4.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part5" style="--card-image: url('./server_images/current_ship_part5.jpg'); --card-width: 375; --card-height: 375;"></div>
+        <div class="card" id="ship_part6" style="--card-image: url('./server_images/current_ship_part6.jpg'); --card-width: 375; --card-height: 375;"></div>
     </div>
 
 </div>
+
+    <dialog class="card-picker" id="cardPicker">
+        <div class="picker-header">
+            <h2 id="pickerTitle">Select card</h2>
+            <button class="picker-close" id="pickerClose" type="button">Close</button>
+        </div>
+        <input class="picker-search" id="pickerSearch" type="search" placeholder="Search cards" autocomplete="off">
+        <div class="picker-options" id="pickerOptions"></div>
+    </dialog>
 
     <script>
         const contract1 =  document.getElementById('contract1');
@@ -229,6 +399,7 @@
 
         const cards = document.querySelectorAll(".card");
 
+        // 3D Parallax tilt effect on mouse movement
         document.addEventListener("mousemove", (event) => {
             max_rotate = 12; // Maximum rotation in degrees
             max_translate = 5; // Maximum translation in pixels
@@ -250,6 +421,166 @@
                 `;
             }
         });
+
+        const slotBindings = [
+            ...Array.from({ length: 8 }, (_, index) => ({
+                elementId: `contract${index + 1}`, zone: 'contract_slot_1', slot: index, libraryType: 'contracts',
+            })),
+            ...Array.from({ length: 3 }, (_, index) => ({
+                elementId: `crew${index + 1}`, zone: 'crew_slot_1', slot: index, libraryType: 'crew',
+            })),
+            ...Array.from({ length: 6 }, (_, index) => ({
+                elementId: `ship_part${index + 1}`, zone: 'ship_part_slot_1', slot: index, libraryType: 'ship_parts',
+            })),
+        ];
+        const modeStatus = document.getElementById('modeStatus');
+        const cardPicker = document.getElementById('cardPicker');
+        const pickerSearch = document.getElementById('pickerSearch');
+        const pickerOptions = document.getElementById('pickerOptions');
+        const pickerTitle = document.getElementById('pickerTitle');
+        let lastSeenTimestamp = 0;
+        let activeMode = 'detect';
+        let cardCatalog = {};
+
+        async function fetchBoardState() {
+            try {
+                const response = await fetch(`/api/state?t=${Date.now()}`, { cache: 'no-store' });
+                return response.ok ? await response.json() : null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function updateCardImages(timestamp) {
+            for (let i = 1; i <= 8; i++) {
+                document.getElementById(`contract${i}`).style.setProperty('--card-image', `url('./server_images/current_contract${i}.jpg?t=${timestamp}')`);
+            }
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`crew${i}`).style.setProperty('--card-image', `url('./server_images/current_crew${i}.jpg?t=${timestamp}')`);
+            }
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById(`ship_part${i}`).style.setProperty('--card-image', `url('./server_images/current_ship_part${i}.jpg?t=${timestamp}')`);
+            }
+        }
+
+        function cardLabel(cardId) {
+            return cardId.replaceAll('_', ' ').replaceAll('-', ' ');
+        }
+
+        async function updateSlot(binding, action, cardId = null) {
+            modeStatus.textContent = `${activeMode} mode: updating`;
+            try {
+                const response = await fetch('/api/slot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ zone: binding.zone, slot: binding.slot, action, card_id: cardId }),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Update failed');
+                await pollBoardState();
+            } catch (error) {
+                modeStatus.textContent = error.message;
+            }
+        }
+
+        function openCardPicker(binding) {
+            const zoneCards = cardCatalog[binding.libraryType] || [];
+            pickerTitle.textContent = `Select ${binding.libraryType.replaceAll('_', ' ')}`;
+            pickerSearch.value = '';
+            pickerOptions.replaceChildren();
+
+            const renderOptions = () => {
+                const query = pickerSearch.value.trim().toLowerCase();
+                pickerOptions.replaceChildren();
+                for (const cardId of zoneCards) {
+                    const label = cardLabel(cardId);
+                    if (!label.toLowerCase().includes(query)) continue;
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'picker-option';
+                    option.textContent = label;
+                    option.addEventListener('click', async () => {
+                        cardPicker.close();
+                        await updateSlot(binding, 'select', cardId);
+                    });
+                    pickerOptions.append(option);
+                }
+                if (!pickerOptions.childElementCount) {
+                    const empty = document.createElement('div');
+                    empty.textContent = 'No matching cards';
+                    pickerOptions.append(empty);
+                }
+            };
+
+            renderOptions();
+            cardPicker.showModal();
+            pickerSearch.focus();
+            pickerSearch.oninput = renderOptions;
+        }
+
+        function configureInteractiveSlots() {
+            for (const binding of slotBindings) {
+                const card = document.getElementById(binding.elementId);
+                if (card.dataset.controlsBound === 'true') continue;
+                card.dataset.controlsBound = 'true';
+                card.addEventListener('click', () => {
+                    if (activeMode === 'manual') openCardPicker(binding);
+                    if (activeMode === 'random') updateSlot(binding, 'reroll');
+                });
+                card.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    if (activeMode === 'manual') openCardPicker(binding);
+                    if (activeMode === 'random') updateSlot(binding, 'reroll');
+                });
+                const clearButton = document.createElement('button');
+                clearButton.type = 'button';
+                clearButton.className = 'slot-clear';
+                clearButton.textContent = 'Clear';
+                clearButton.setAttribute('aria-label', `Clear ${binding.elementId}`);
+                clearButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    updateSlot(binding, 'clear');
+                });
+                card.append(clearButton);
+            }
+        }
+
+        async function pollBoardState() {
+            const data = await fetchBoardState();
+            if (!data || !data.zones) {
+                modeStatus.textContent = 'Board server unavailable';
+                return;
+            }
+
+            activeMode = data.mode;
+            cardCatalog = data.catalog || {};
+            modeStatus.textContent = `${activeMode[0].toUpperCase()}${activeMode.slice(1)} mode`;
+            for (const binding of slotBindings) {
+                const card = document.getElementById(binding.elementId);
+                const interactive = activeMode === 'manual' || activeMode === 'random';
+                card.classList.toggle('interactive', interactive);
+                card.setAttribute('aria-label', `${binding.elementId}, ${activeMode} mode`);
+                card.tabIndex = interactive ? 0 : -1;
+                card.setAttribute('role', interactive ? 'group' : 'img');
+                if (interactive) configureInteractiveSlots();
+            }
+
+            let maxTimestamp = 0;
+            for (const zone of Object.values(data.zones)) {
+                if (zone.last_updated && zone.last_updated > maxTimestamp) {
+                    maxTimestamp = zone.last_updated;
+                }
+            }
+            if (maxTimestamp > lastSeenTimestamp) {
+                lastSeenTimestamp = maxTimestamp;
+                updateCardImages(maxTimestamp);
+            }
+        }
+
+        document.getElementById('pickerClose').addEventListener('click', () => cardPicker.close());
+        setInterval(pollBoardState, 1500);
+        pollBoardState();
     </script>
 </body>
 </html>

@@ -36,7 +36,7 @@ def test_update_returns_true_when_card_count_changes():
 def test_to_dict_wraps_zones():
     board_state = state.BoardState()
     board_state.update("zone_1", [("card_a", 0.9)])
-    assert board_state.to_dict() == {"zones": board_state.zones}
+    assert board_state.to_dict() == {"zones": board_state.zones, "used_cards": board_state.used_cards}
 
 
 def test_save_and_load_round_trip(tmp_path):
