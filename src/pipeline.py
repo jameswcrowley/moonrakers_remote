@@ -251,7 +251,7 @@ def process_boards(frame, libraries, matcher, board_state: state.BoardState, boa
 def parse_arguments():
     """Parse camera and pipeline options."""
     parser = argparse.ArgumentParser(description="Track Moonrakers board state from a camera feed.")
-    parser.add_argument("--mode", choices=MODES, default="detect", help="Pipeline mode (default: detect).")
+    parser.add_argument("--mode", choices=MODES, default="manual", help="Pipeline mode (default: manual).")
     parser.add_argument("--camera", type=int, default=0, help="Camera device index (default: 0).")
     parser.add_argument("--edge-detection", type=str, choices=["canny", "threshold"], default="threshold", help="Edge detection method to use (default: canny).")
     parser.add_argument("--matcher", choices=list(MATCHERS.keys()), default="orb", help="Feature matcher to use.")
