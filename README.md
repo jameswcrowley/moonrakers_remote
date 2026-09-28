@@ -23,7 +23,7 @@ Pipeline modes:
 
 To select another mode, run `python src/pipeline.py --mode manual` or `python src/pipeline.py --mode random`. The default camera index is 0; use `--camera N` to select another device. Use `--host` and `--port` to change the web server address.
 
-To share the page through cloudflared, keep the local server bound to loopback and run:
+To share the page through cloudflared, first launch the local server and then run:
 
 ```sh
 cloudflared tunnel --url http://127.0.0.1:8000

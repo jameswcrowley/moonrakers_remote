@@ -106,6 +106,18 @@
             transition: transform 0.1s ease-out;
         }
 
+        .card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            background: linear-gradient(var(--card-shine-angle, 10deg), #eeeeee00, #eeeeee00, #eeeeee00, #eeeeee00, #eeeeee00, #fafafa90, #eeeeee00, #eeeeee00, #eeeeee00, #eeeeee00, #eeeeee00);
+            background-size: 200% 200%;
+            background-position: var(--card-shine-position-x, 50%) var(--card-shine-position-y, 50%);
+            z-index: 3;
+        }
+
         .card.interactive {
             cursor: pointer;
             touch-action: manipulation;
@@ -113,16 +125,16 @@
 
         .slot-clear {
             position: absolute;
-            top: 5px;
+            top: 5%;
             right: 5px;
             z-index: 2;
-            border: 1px solid rgb(255 255 255 / 70%);
+            border: 1px solid rgb(255 255 255 / 40%);
             border-radius: 4px;
             padding: 5px 7px;
             color: white;
-            background: rgb(0 0 0 / 75%);
+            background: rgb(0 0 0 / 50%);
             font: inherit;
-            font-size: 0.65rem;
+            font-size: 0.25rem;
             cursor: pointer;
         }
 
@@ -399,20 +411,60 @@
 
         const cards = document.querySelectorAll(".card");
 
-        // 3D Parallax tilt effect on mouse movement
-        document.addEventListener("mousemove", (event) => {
-            max_rotate = 12; // Maximum rotation in degrees
-            max_translate = 5; // Maximum translation in pixels
-
-            const percentX = (event.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
-            const percentY = (event.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
-
-            const rotateX = -percentY * max_rotate;
-            const rotateY = percentX * max_rotate;
-            const translateX = percentX * max_translate;
-            const translateY = percentY * max_translate;
+                document.addEventListener("mousemove", (event) => {
+            const shine_radius_std = 150;  // px, same falloff radius as the tilt effect
 
             for (const card of cards) {
+                const rect = card.getBoundingClientRect();
+                const card_centerX = rect.left + rect.width / 2;
+                const card_centerY = rect.top + rect.height / 2;
+                const dx = event.clientX - card_centerX;
+                const dy = event.clientY - card_centerY;
+                const distance = Math.hypot(dx, dy);
+
+                // Gaussian falloff so only nearby cards sweep; far cards rest at center
+                const influence = Math.exp(-(distance * distance) / (2 * shine_radius_std * shine_radius_std));
+
+                const rawPercentX = (dx / rect.width) * 1 + 100;
+                const rawPercentY = (dy / rect.height) * 10 + 80;
+                const percentX = 50 + (rawPercentX - 50) * influence;
+                const percentY = 50 + (rawPercentY - 50) * influence;
+                const angle = Math.atan2(percentY, percentX)/ Math.PI * 180 + 10;
+                
+                // const angle = 10;
+
+                card.style.setProperty('--card-shine-position-x', `${percentX}%`);
+                card.style.setProperty('--card-shine-position-y', `${percentY}%`);
+                card.style.setProperty('--card-shine-angle', `${angle}deg`);
+            }
+        });
+
+        // 3D Parallax tilt effect on mouse movement
+        document.addEventListener("mousemove", (event) => {
+            const max_rotate = 15;       // degrees
+            const max_translate = 5;    // px
+            const radius_std = 150;      // px, controls how far the influence reaches
+
+            for (const card of cards) {
+                const rect = card.getBoundingClientRect();
+                const card_centerX = rect.left + rect.width / 2;
+                const card_centerY = rect.top + rect.height / 2;
+
+                const dx = event.clientX - card_centerX;
+                const dy = event.clientY - card_centerY;
+                const distance = Math.hypot(dx, dy);
+
+                // Gaussian falloff so only nearby cards react strongly
+                const influence = Math.exp(-(distance * distance) / (2 * radius_std * radius_std));
+
+                const percentX = dx / rect.width;
+                const percentY = dy / rect.height;
+
+                const rotateX = -percentY * max_rotate * influence;
+                const rotateY = percentX * max_rotate * influence;
+                const translateX = percentX * max_translate * influence;
+                const translateY = percentY * max_translate * influence;
+
                 card.style.transform = `
                     rotateX(${rotateX}deg)
                     rotateY(${rotateY}deg)
