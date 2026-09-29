@@ -1,4 +1,4 @@
-A code for using a webcam to capture and display the state of a Moonrakers game contract/shop board so I can play remotely with my friends.
+A code for using a webcam to capture and display the state of a Moonrakers game contract/shop board to a website so I can play remotely with my friends.
 
 ![Remote Title](remote_title.png)
 
@@ -29,4 +29,6 @@ To share the page through cloudflared, first launch the local server and then ru
 cloudflared tunnel --url http://127.0.0.1:8000
 ```
 
-Credit to Carla-Codes for the star twinkling images and design.
+Credit to Carla-Codes for the star twinkling images and idea.
+
+Contact jameswcrowley (at) gmail for questions or suggestions. 
